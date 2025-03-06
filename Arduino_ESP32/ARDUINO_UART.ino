@@ -16,7 +16,7 @@ const char* ssid = "iPhone";
 const char* password = "12345678";
 
 // Token del Bot Telegram
-const char* botToken = "8082070401:AAFuVlaBvZ4F6UsReP_7J7LLncRXkjs2_Eo";
+const char* botToken = "your_bot";
 
 WiFiSSLClient client;
 UniversalTelegramBot bot(botToken, client);
