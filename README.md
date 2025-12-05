@@ -1,87 +1,82 @@
-# 🍇 Sistema IoT Low-Power per il Monitoraggio Ambientale in Agricoltura
+# 🍇 Low-Power IoT System for Environmental Monitoring in Agriculture
 
-Questo progetto implementa un sistema IoT per il **monitoraggio in tempo reale** dei parametri ambientali di un terreno, con un'enfasi particolare sull'**ottimizzazione energetica** e l'**affidabilità della comunicazione** tra i nodi sensore e l'utente finale.
+This project implements an IoT system for the **real-time monitoring** of environmental parameters in a field, with a particular emphasis on **energy optimization** and **communication reliability** between sensor nodes and the end-user.
 
-## 🎯 Obiettivi del Progetto
+## 🎯 Project Objectives
 
-Il sistema è stato realizzato per:
+The system was developed to achieve the following goals:
 
-* **Raccogliere dati ambientali in tempo reale** (temperatura, umidità, intensità luminosa, umidità del suolo e rilevamento pioggia) utilizzando sensori interni ed esterni collegati a un **TelosB**.
-* Garantire una **comunicazione affidabile e integrata** tra i dispositivi di monitoraggio.
-* Minimizzare i consumi tramite hardware a basso consumo (TelosB, ESP32), attivando l'acquisizione e la trasmissione solo su richiesta dell'utente.
-
-
-
-[Image of IoT system architecture for agriculture]
-
+* **Real-time Data Collection:** Gather environmental data (temperature, humidity, light intensity, soil moisture, and rain detection) using internal and external sensors connected to a **TelosB**.
+* **Reliable Communication:** Ensure **reliable and integrated communication** between the monitoring devices.
+* **Low Power Consumption:** Minimize energy usage through low-power hardware (TelosB, ESP32), activating acquisition and transmission only upon user request.
 
 ---
 
-## ⚙️ Architettura del Sistema
+## ⚙️ System Architecture
 
-Il sistema si basa su una struttura a tre livelli, tipica delle applicazioni IoT per l'agricoltura, integrando nodi sensore basati su TinyOS con una piattaforma di visualizzazione utente.
+The system is based on a three-tier structure, typical of IoT applications for agriculture, integrating sensor nodes based on TinyOS with a user visualization platform.
 
-### 1. Nodi Sensore (TelosB TX)
+### 1. Sensor Nodes (TelosB TX)
 
-Il nodo sensore (TelosB Trasmitter) è responsabile della lettura dei parametri ambientali.
+The sensor node (TelosB Transmitter) is responsible for reading environmental parameters.
 
-* **Piattaforma:** **TinyOS**.
-* **Sensori Interni:** Umidità e Temperatura dell’aria (**SensirionSht11**), Luminosità e Intensità IR (**HamamatsuS1087**).
-* **Sensori Esterni:** Rilevamento pioggia (**MH-RD Raindrops**) e Umidità del suolo (**AZDelivery**).
+* **Platform:** **TinyOS**.
+* **Internal Sensors:** Air Humidity and Temperature (**SensirionSht11**), Light and IR Intensity (**HamamatsuS1087**).
+* **External Sensors:** Rain Detection (**MH-RD Raindrops**) and Soil Moisture (**AZDelivery**).
 
-### 2. Gateway e Bridge (TelosB RX, ESP32, Arduino)
+### 2. Gateway and Bridge (TelosB RX, ESP32, Arduino)
 
-Questa sezione funge da ponte tra il nodo sensore radio e l'interfaccia utente, gestendo protocolli diversi:
+This section acts as a bridge between the radio sensor node and the user interface, managing different protocols:
 
-| Componente | Ruolo | Comunicazione | Note |
+| Component | Role | Communication | Notes |
 | :---: | :---: | :---: | :--- |
-| **TelosB Receiver** | Buffer dati | Radio (riceve da TX), **SPI Slave** (invia a ESP32) | Sviluppato in TinyOS. |
-| **ESP32** | Master/Controller | **SPI Master** (riceve da TelosB RX), **UART** (invia ad Arduino) | Invia i dati tramite UART come binario. |
-| **Arduino UNO** | Interfaccia Utente | **UART** (riceve da ESP32), **I2C** (display), **Wi-Fi** (Telegram Bot) | Gestisce la logica di controllo e l'interfaccia utente. |
+| **TelosB Receiver** | Data Buffer | Radio (receives from TX), **SPI Slave** (sends to ESP32) | Developed in TinyOS. |
+| **ESP32** | Master/Controller | **SPI Master** (receives from TelosB RX), **UART** (sends to Arduino) | Sends data via UART as binary. |
+| **Arduino UNO** | User Interface | **UART** (receives from ESP32), **I2C** (display), **Wi-Fi** (Telegram Bot) | Manages control logic and user interface. |
 
-> ⚠️ **Protezione Hardware:** Per proteggere l'ESP32 (3.3V) dalle sovratensioni in uscita dall'Arduino (5V), i canali di comunicazione sono dotati di un **partitore di tensione**.
+> ⚠️ **Hardware Protection:** To protect the ESP32 (3.3V) from overvoltage output from the Arduino (5V), the communication channels are equipped with a **voltage divider**.
 
 ---
 
-## 💻 Logica di Comunicazione e Controllo Low-Power
+## 💻 Low-Power Communication and Control Logic
 
-L'efficienza energetica è garantita da un meccanismo di attivazione on-demand:
+Energy efficiency is guaranteed by an on-demand activation mechanism:
 
-### 1. Attivazione Nodi
+### 1. Node Activation
 
-* **Sleep Mode:** Il **TelosB Receiver** è costantemente in uno stato di congelamento (`freezing state`).
-* **Wake-up via Radio:** Il **TelosB Receiver** viene "svegliato" da un messaggio di controllo (`START_TRANSMISSION`) inviato via **comunicazione radio** dal **TelosB Trasmitter**.
+* **Sleep Mode:** The **TelosB Receiver** is constantly in a **freezing state** (`freezing state`).
+* **Wake-up via Radio:** The **TelosB Receiver** is "woken up" by a control message (`START_TRANSMISSION`) sent via **radio communication** from the **TelosB Transmitter**.
 
-### 2. Acquisizione Dati
+### 2. Data Acquisition
 
-* **Soglia di Attivazione:** Il **TelosB Trasmitter** utilizza il pin Analog Input 0 (ADC0) per monitorare lo stato di un pin dedicato ogni 500 ms (`EnvTimer`).
-* **Trasmissione:** Se la lettura analogica del pin è **maggiore di 2V**, viene inviato il comando `START_TRANSMISSION` al TelosB Receiver per avviare l'acquisizione dei dati.
+* **Activation Threshold:** The **TelosB Transmitter** uses Analog Input 0 (ADC0) to monitor the state of a dedicated pin every 500 ms (`EnvTimer`).
+* **Transmission:** If the analog reading of the pin is **greater than 2V**, the `START_TRANSMISSION` command is sent to the TelosB Receiver to start data acquisition.
 
-### 3. Logica del Bot Telegram
+### 3. Telegram Bot Logic
 
-L'interazione con l'utente avviene tramite il bot **«BotDadoRaff»**.
+User interaction occurs via the **«BotDadoRaff»** bot.
 
-| Comando | Funzione |
+| Command | Function |
 | :---: | :--- |
-| **`/start`** | Avvia una nuova sessione. |
-| **`/dati`** | Richiede una singola acquisizione dei dati. |
-| **`/periodic`** | Avvia acquisizioni periodiche. |
-| **`/stop`** | Interrompe le acquisizioni periodiche. |
+| **`/start`** | Starts a new session. |
+| **`/dati`** | Requests a single data acquisition. |
+| **`/periodic`** | Starts periodic acquisitions. |
+| **`/stop`** | Stops periodic acquisitions. |
 
-### 4. Gestione delle Risposte
+### 4. Response Management
 
-* **Check Messaggi:** Arduino controlla i nuovi messaggi dal bot ogni **due secondi** (`botRequestDelay`).
-* **Richiesta Dati:** Se l'utente richiede dati, Arduino alza il pin **`STROBE_PIN`** (HIGH) per un istante, segnalando l'evento all'ESP32.
-* **Visualizzazione:** I dati ricevuti sono visualizzati su un **display OLED** tramite protocollo **I2C** e inviati nuovamente all'utente tramite il **Bot Telegram**.
-* **Controllo Malfunzionamenti:** Se **più di 5 valori** ricevuti sono nulli, viene inviato un messaggio di avviso per segnalare un possibile problema nella trasmissione.
+* **Message Check:** Arduino checks for new messages from the bot every **two seconds** (`botRequestDelay`).
+* **Data Request:** If the user requests data, Arduino raises the **`STROBE_PIN`** (HIGH) momentarily, signaling the event to the ESP32.
+* **Visualization:** The received data is displayed on an **OLED display** via the **I2C** protocol and sent back to the user through the **Telegram Bot**.
+* **Malfunction Check:** If **more than 5 received values** are null, a warning message is sent to signal a possible transmission issue.
 
 ---
 
-## 👥 Autori
+## 👥 Authors
 
 * **Raffaele Petrolo**
 * **Davide Di Gesu**
 
 ---
 
-*Questo progetto è stato sviluppato per il corso di Programmazione di Sistemi IoT e Wearable, Anno Accademico 2024/2025.*
+*This project was developed for the course of Programming IoT and Wearable Systems, Academic Year 2024/2025.*
